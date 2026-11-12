@@ -43,7 +43,26 @@ This project demonstrates the design, deployment, and operational troubleshootin
 
 ---
 
-## 3. Real-World NOC Incident Log & Triage Cases
+##3. Implementation Highlights
+
+### 3.1 Edge Routing and Security Architecture
+
+- Configured OPNsense with dedicated virtual machine interfaces (`em0` through `em3`).
+- Enforced enterprise addressing conventions: gateways standardize on the first usable host (`.1/24`).
+- Configured dynamic DHCP distribution pools (`.100` — `.200`) while reserving lower space (`.2` — `.99`) for static enterprise servers.
+
+### 3.2 Active Directory and Hybrid DNS Infrastructure
+
+- Deployed Windows Server 2022 (`MY-DC-01`) as Domain Controller for `pmm.edu`.
+- Established Forward Lookup Zones (`pmm.edu`, `_msdcs.pmm.edu`) and configured recursive public DNS forwarders (`9.9.9.9` Quad9) to resolve external FQDNs without compromising domain trust.
+- Joined Windows 11 Pro to `pmm.edu` and validated cross-subnet Kerberos Ticket Granting Ticket (TGT) generation via `klist`.
+
+### 3.3 Access Control Lists (ACLs) and Micro-Segmentation
+
+- Maintained default-deny postures accross optional interfaces (`OPT1`, `OPT2`).
+- Implemented Layer 3/Layer 4 firewall filters restricting Corporates client from traversing into the Security tier while allowing legitimate Server Tier access.
+
+## 4. NOC Incident Log & Triage Cases
 
 ### Incident 01: Host IP Assigned to Gateway Interface (Routing Blackhole)
 * **Symptom:** Windows 11 client and Windows Server reported "No Internet" and timed out pinging their default gateways (`10.10.10.1` and `10.10.20.1`).
@@ -69,9 +88,9 @@ This project demonstrates the design, deployment, and operational troubleshootin
 * **Resolution:** Opened DNS Manager on Windows Server 2022 ('MY-DC-01') and added recursive DNS Forwarders pointing to Quad9 (9.9.9.9).
 
 
-## 4. Packet Inspection & Diagnostic Verification
+## 5. Packet Inspection & Verification Evidence
 
-### 4.1 Layer 2 ARP Table Verification (Neighbor Discovery)
+### 5.1 Layer 2 ARP Table Verification (Neighbor Discovery)
 
 Confirmed Layer 2 resolution between Kali Linux and the OPNsense gateway interface:
 ```cmd
@@ -83,7 +102,7 @@ Output Observed:
 ```
 *(The transition from INCOMPLETE to REACHABLE/STALE proves that Layer 2 virtual switching and MAC address resolution succeeded).*
 
-### 4.2 Transport Layer Handshake Capture (`tcpdump`)
+### 5.2 Transport Layer Handshake Capture (`tcpdump`)
 
 Captured the TCP 3-Way Handshake flags during session initialization to the OPNsense WebGUI:
 ```cmd
@@ -99,7 +118,7 @@ Captured Packet Flow:
 3.`[.]` (ACK) — Session established state
 
 
-### 4.3 Socket State & Listening Port Inspection (`ss`)
+### 5.3 Socket State & Listening Port Inspection (`ss`)
 Verified local transport-layer socket bindings on Linux endpoints:
 
 ```cmd
