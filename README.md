@@ -41,6 +41,8 @@ This project demonstrates the design, deployment, and operational troubleshootin
 | Security Lab (VLAN 30) | em3 | vlan30-security | 10.10.30.0/24 | 10.10.30.1 | 10.10.30.50 | Kali Linux Inspection Node |
 
 
+![Opnsense network interfaces.](lab-images/01-opnsense-interfaces.png)
+
 ---
 
 ## 3. Implementation Highlights
@@ -57,10 +59,16 @@ This project demonstrates the design, deployment, and operational troubleshootin
 - Established Forward Lookup Zones (`pmm.edu`, `_msdcs.pmm.edu`) and configured recursive public DNS forwarders (`9.9.9.9` Quad9) to resolve external FQDNs without compromising domain trust.
 - Joined Windows 11 Pro to `pmm.edu` and validated cross-subnet Kerberos Ticket Granting Ticket (TGT) generation via `klist`.
 
+![Active directory Windows Server 2022.](lab-images/02-activedirectory-dns.png)
+
+
 ### 3.3 Access Control Lists (ACLs) and Micro-Segmentation
 
 - Maintained default-deny postures accross optional interfaces (`OPT1`, `OPT2`).
 - Implemented Layer 3/Layer 4 firewall filters restricting Corporates client from traversing into the Security tier while allowing legitimate Server Tier access.
+
+
+![Block Vlan 10 to Vlan 30](lab-images/04-block-rules.png)
 
 ## 4. NOC Incident Log & Triage Cases
 
@@ -80,17 +88,26 @@ This project demonstrates the design, deployment, and operational troubleshootin
 * **Resolution:** Navigated to **Firewall > Rules > OPT2** in the WebGUI and added an explicit stateful pass rule:
   * *Action:* `Pass` | *Interface:* `OPT2` | *Protocol:* `any` | *Source:* `OPT2 net` | *Destination:* `any`
 
+![Establish stateful pass rule](lab-images/03-firewall-rules.png)
+
 ### Incident 04: Windows Defender Dropping Cross-Subnet ICMP (Scope Restriction)
 * **Symptom:** Kali Linux could reach its gateway and public internet, but pings to Windows 11 (`10.10.10.50`) failed with 100% packet loss despite OPNsense rules permitting the transit.
 * **Root Cause Analysis (RCA):** The default Windows Defender Firewall "File and Printer Sharing (Echo Request — ICMPv4-In)" rule was scoped strictly to "Local Subnet Only". Packets arriving from `10.10.30.0/24` were categorized as remote and dropped at the host layer.
 * **Resolution:** Executed host firewall rule update in Windows 11 to permit ICMP across routed subnets:
   ```cmd
   netsh advfirewall firewall add rule name="Allow ICMP from All Subnets" dir=in action=allow protocol=icmpv4:any,any remoteip=any
+  ```
+  
+  ![Post configurations of Windows Defender Firewall](lab-images/05-windows-defender-firewall.png)
 
 ### Incident 05: Active Directory External DNS Blackholing
 * **Symptom:** Windows 11 could ping public IP addresses (`8.8.8.8, 1.1.1.1 and 9.9.9.9`), but could not resolve external domain names ('google.com').
 * **Root Cause Analysis (RCA):** Windows 11 had its primary DNS pointed exclusively to the Domain Controller (`10.10.20.10`). Windows Server 2022 resolved internal `pmm.edu` records but had no DNS Forwarders configured to resolve external public queries.
 * **Resolution:** Opened DNS Manager on Windows Server 2022 (`MY-DC-01`) and added recursive DNS Forwarders pointing to Quad9 (`9.9.9.9`).
+
+
+
+![DNS Forwarders Windows Active Directory](lab-images/06-dns-forwarders.png)
 
 
 ## 5. Packet Inspection & Verification Evidence
@@ -101,6 +118,8 @@ Confirmed Layer 2 resolution between Kali Linux and the OPNsense gateway interfa
 ```cmd
 ip neigh show
 ```
+![Verify IP neighbor reachability](lab-images/07-arp-table-verification.png)
+
 Output Observed:
 ```cmd
 10.10.30.1 dev eth0 lladdr 08:00:27:xx:xx:xx REACHABLE
@@ -114,6 +133,7 @@ Captured the TCP 3-Way Handshake flags during session initialization to the OPNs
 sudo tcpdump -nn -i eth0 "tcp[tcpflags] & (tcp-syn|tcp-ack) != 0" -c 6
 ```
 
+![Captured TCP 3-way handshake](lab-images/08-tcpdump-captured.png)
 Captured Packet Flow:
 
 1.`[S]` (SYN) — Client sequence number initialization
@@ -129,6 +149,8 @@ Verified local transport-layer socket bindings on Linux endpoints:
 ```cmd
 ss -tuna
 ```
+![Checked socket state](lab-images/09-socket-state.png)
+
 - Checked listening sockets (`LISTEN`) on critical services before network transit testing.
 - Validated active sockets (`ESTAB`) during active HTTPS and DNS traffic sessions.
 
