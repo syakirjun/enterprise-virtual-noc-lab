@@ -43,7 +43,7 @@ This project demonstrates the design, deployment, and operational troubleshootin
 
 ---
 
-##3. Implementation Highlights
+## 3. Implementation Highlights
 
 ### 3.1 Edge Routing and Security Architecture
 
